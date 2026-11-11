@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ÀFRICA · PUZLE FÍSIC | Aula Next ESO</title>
+    <!-- Revisió cartogràfica 2026-11-11: zones d'encaix, punts i excepcions geogràfiques; sense canvis de funcionalitat. -->
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Great+Vibes&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 10px; }
+
+        @keyframes pulse-guide-poly {
+            0% {
+                filter: drop-shadow(0 0 4px #a3e635) drop-shadow(0 0 8px #fde047);
+                fill-opacity: 0.55;
+                stroke-width: 2.5;
+            }
+            50% {
+                filter: drop-shadow(0 0 12px #84cc16) drop-shadow(0 0 20px #facc15);
+                fill-opacity: 0.82;
+                stroke-width: 4;
+            }
+            100% {
+                filter: drop-shadow(0 0 4px #a3e635) drop-shadow(0 0 8px #fde047);
+                fill-opacity: 0.55;
+                stroke-width: 2.5;
+            }
+        }
+
+        @keyframes pulse-guide-river {
+            0% {
+                filter: drop-shadow(0 0 4px #fef08a) drop-shadow(0 0 8px #38bdf8);
+                stroke-opacity: 0.85;
+            }
+            50% {
+                filter: drop-shadow(0 0 12px #facc15) drop-shadow(0 0 18px #0284c7);
+                stroke-opacity: 1;
+            }
+            100% {
+                filter: drop-shadow(0 0 4px #fef08a) drop-shadow(0 0 8px #38bdf8);
+                stroke-opacity: 0.85;
+            }
+        }
+
+        @keyframes dash-flow {
+            to { stroke-dashoffset: -24; }
+        }
+
+        .guide-glow-poly {
+            animation: pulse-guide-poly 1.2s infinite ease-in-out;
+        }
+
+        .guide-glow-river {
+            animation: pulse-guide-river 1.2s infinite ease-in-out;
+        }
+
+        .river-flow-dash {
+            stroke-dasharray: 6 6;
+            animation: dash-flow 0.9s linear infinite;
+        }
+
+        @keyframes snap-pop {
+            0% { transform: scale(1.16); opacity: 0.4; }
+            60% { transform: scale(0.97); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .solved-snap {
+            transform-box: fill-box;
+            transform-origin: center;
+            animation: snap-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .certificate-appear {
+            animation: slideUp 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .diploma-font { font-family: 'Great Vibes', cursive; }
+
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 10mm;
+            }
+            .no-print { display: none !important; }
+            body {
+                overflow: visible !important;
+                background: #ffffff !important;
+            }
+            #diploma-print-container {
+                position: fixed !important;
+                inset: 0 !important;
+                background: #ffffff !important;
+                z-index: 9999 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- BLOC 1: DADES OFICIALS, MOTOR D'ÀUDIO I GEOMETRIA (JS NATIU SENSE BABEL) -->
+    <script>
+        window.CATEGORY_STYLES = {
+            "Mars i golfs":       { badge: "#0284c7", bg: "#e0f2fe", label: "Mar / Golf" },
+            "Relleu i costes":    { badge: "#9333ea", bg: "#f3e8ff", label: "Relleu / Costa" },
+            "Penínsules i illes": { badge: "#16a34a", bg: "#dcfce7", label: "Península / Illa" },
+            "Rius":               { badge: "#2563eb", bg: "#dbeafe", label: "Riu / Cascada" },
+            "Llacs":              { badge: "#0891b2", bg: "#cffafe", label: "Llac" },
+            "Deserts":            { badge: "#d97706", bg: "#fef3c7", label: "Desert" }
+        };
+
+        window.ACCIDENTS_AFRICA = [
+            {
+                num: 1, name: "Mar Mediterrani", category: "Mars i golfs", type: "poly", color: "#0284c7", fillOpacity: 0.48,
+                poly: [[170,38],[195,28],[230,22],[280,22],[300,32],[282,48],[318,62],[352,48],[410,50],[468,48],[462,72],[432,73],[408,71],[358,84],[330,80],[318,66],[286,54],[274,34],[220,35],[174,42]],
+                hitPoly: [[172,38],[195,28],[230,22],[280,22],[300,32],[282,48],[318,62],[352,48],[410,50],[468,48],[462,71],[432,72],[408,70],[358,82],[330,78],[318,65],[286,52],[274,34],[220,35],[175,41]],
+                hitTol: 2, hitRadius: 14, anchor: [345, 58], labelPos: [345, 34]
+            },
+            {
+                num: 2, name: "Serralada de l'Atles", category: "Relleu i costes", type: "poly", color: "#b45309", fillOpacity: 0.55,
+                poly: [[128,85],[145,62],[178,46],[218,38],[268,36],[274,52],[232,64],[198,74],[160,92],[132,96]],
+                hitPoly: [[128,85],[145,62],[178,46],[218,38],[268,36],[274,52],[232,64],[198,74],[160,92],[132,96]],
+                hitTol: 3, hitRadius: 14, anchor: [196, 62], labelPos: [196, 55]
+            },
+            {
+                num: 3, name: "Península del Sinaí", category: "Penínsules i illes", type: "poly", color: "#ea580c", fillOpacity: 0.62,
+                poly: [[433,76],[451,76],[454,94],[447,111],[436,92]],
+                hitPoly: [[434,76],[451,76],[454,94],[447,108],[436,91]],
+                hitTol: 4, hitRadius: 11, anchor: [444, 89], labelPos: [472, 68]
+            },
+            {
+                num: 4, name: "Mar Roig", category: "Mars i golfs", type: "poly", color: "#0ea5e9", fillOpacity: 0.54,
+                poly: [[436,89],[444,98],[450,88],[453,96],[461,111],[469,120],[475,127],[481,134],[482,149],[495,160],[498,171],[508,180],[509,197],[514,207],[515,223],[506,222],[500,204],[491,195],[486,188],[481,175],[469,166],[465,140],[454,132],[448,119],[440,100]],
+                hitPoly: [[448,112],[461,111],[469,120],[475,127],[481,134],[482,149],[495,160],[498,171],[508,180],[509,197],[514,207],[515,223],[506,222],[500,204],[491,195],[486,188],[481,175],[469,166],[465,140],[454,132],[448,119]],
+                hitTol: 4, hitRadius: 14, anchor: [478, 156], labelPos: [502, 145]
+            },
+            {
+                num: 5, name: "Península de Somàlia", category: "Penínsules i illes", type: "poly", color: "#f59e0b", fillOpacity: 0.50,
+                poly: [[505,228],[526,232],[555,222],[572,216],[562,246],[540,280],[510,310],[496,280],[502,250]],
+                hitPoly: [[506,228],[526,232],[555,222],[572,216],[562,246],[540,280],[510,310],[498,280],[504,250]],
+                hitTol: 3, hitRadius: 16, anchor: [535, 255], labelPos: [574, 248]
+            },
+            {
+                num: 6, name: "Madagascar", category: "Penínsules i illes", type: "poly", color: "#16a34a", fillOpacity: 0.54,
+                poly: [[553,400],[552,406],[546,409],[544,417],[539,422],[534,428],[521,428],[517,435],[516,444],[520,456],[511,467],[510,480],[514,497],[521,501],[534,497],[542,480],[548,457],[555,444],[558,434],[562,425],[559,402]],
+                hitPoly: [[553,400],[552,406],[546,409],[544,417],[539,422],[534,428],[521,428],[517,435],[516,444],[520,456],[511,467],[510,480],[514,497],[521,501],[534,497],[542,480],[548,457],[555,444],[558,434],[562,425],[559,402]],
+                hitTol: 5, hitRadius: 18, anchor: [536, 456], labelPos: [536, 456]
+            },
+            {
+                num: 7, name: "Cap de Bona Esperança", category: "Relleu i costes", type: "point", color: "#e11d48", fillOpacity: 0.65,
+                poly: [[335,563],[341,563],[341,571],[335,571]],
+                hitPoly: [[334,562],[342,562],[342,572],[334,572]],
+                hitTol: 2, hitRadius: 7, anchor: [338, 567], labelPos: [284, 576]
+            },
+            {
+                num: 8, name: "Golf de Guinea", category: "Mars i golfs", type: "poly", color: "#0369a1", fillOpacity: 0.48,
+                poly: [[165,268],[205,260],[238,262],[252,275],[274,292],[288,332],[230,335],[172,308]],
+                hitPoly: [[165,268],[205,263],[236,264],[252,275],[274,292],[288,332],[230,335],[172,308]],
+                hitTol: 3, hitRadius: 18, anchor: [232, 292], labelPos: [216, 298]
+            },
+            {
+                num: 9, name: "Illes Canàries", category: "Penínsules i illes", type: "poly", color: "#10b981", fillOpacity: 0.58,
+                poly: [[74,88],[114,82],[118,104],[74,106]],
+                hitPoly: [[72,85],[116,80],[120,106],[72,108]],
+                hitTol: 2, hitRadius: 5, hitCircles: [[81,92,6],[92,95,6],[99,97,5],[107,93,6]], visualIslands: [[81,92,4.2],[92,95,4.2],[99,97,3.7],[107,93,4.4]], anchor: [95, 95], labelPos: [62, 74]
+            },
+            {
+                num: 10, name: "Estret de Gibraltar", category: "Relleu i costes", type: "point", color: "#dc2626", fillOpacity: 0.65,
+                poly: [[151,37],[158,37],[158,43],[151,43]],
+                hitPoly: [[151,37],[158,37],[158,43],[151,43]],
+                hitTol: 1.5, hitRadius: 5, anchor: [154, 40], labelPos: [122, 22]
+            },
+            {
+                num: 11, name: "Riu Nil", category: "Rius", type: "river", color: "#1d4ed8",
+                line: [[416,75],[426,90],[425,105],[429,118],[441,128],[443,141],[431,154],[433,166],[447,174],[452,187],[448,204],[444,230],[441,245],[447,265],[446,282],[431,289],[440,295],[444,304]],
+                extraLines: [[[432,76],[426,90]],[[448,204],[462,217],[472,224]]],
+                hitLine: [[416,75],[426,90],[425,105],[429,118],[441,128],[443,141],[431,154],[433,166],[447,174],[452,187],[448,204],[444,230],[441,245],[447,265],[446,274]],
+                hitTol: 9, hitRadius: 12, anchor: [431, 154], labelPos: [402, 126]
+            },
+            {
+                num: 12, name: "Massís d'Etiòpia", category: "Relleu i costes", type: "poly", color: "#9333ea", fillOpacity: 0.50,
+                poly: [[458,195],[488,192],[502,216],[510,240],[490,264],[465,262],[454,240],[455,215]],
+                hitPoly: [[458,195],[488,192],[502,216],[508,240],[490,263],[465,261],[455,240],[456,215]],
+                hitTol: 2, hitRadius: 15, anchor: [480, 228], labelPos: [484, 218]
+            },
+            {
+                num: 13, name: "Rift Valley", category: "Relleu i costes", type: "poly", color: "#c026d3", fillOpacity: 0.44,
+                poly: [[455,290],[474,290],[468,310],[458,312],[457,332],[462,366],[446,374],[436,352],[446,332],[454,306]],
+                hitPoly: [[456,292],[472,292],[468,307],[464,320],[460,341],[461,363],[452,369],[451,352],[453,337],[459,318]],
+                hitTol: 1.5, hitRadius: 6, anchor: [461, 300], labelPos: [518, 298]
+            },
+            {
+                num: 14, name: "Llac Victòria", category: "Llacs", type: "poly", color: "#06b6d4", fillOpacity: 0.72,
+                poly: [[453,308],[449,308],[447,305],[442,303],[439,307],[435,308],[432,314],[433,324],[439,326],[446,322],[448,314]],
+                hitPoly: [[453,308],[449,308],[447,305],[442,303],[439,307],[435,308],[432,314],[433,324],[439,326],[446,322],[448,314]],
+                hitTol: 4, hitRadius: 11, anchor: [441, 315], labelPos: [392, 316]
+            },
+            {
+                num: 15, name: "Llac Tanganyika", category: "Llacs", type: "poly", color: "#0891b2", fillOpacity: 0.75,
+                poly: [[415,329],[418,334],[419,343],[420,350],[423,357],[427,367],[423,367],[419,360],[416,352],[414,343]],
+                hitPoly: [[415,329],[418,334],[419,343],[420,350],[423,357],[427,367],[423,367],[419,360],[416,352],[414,343]],
+                hitTol: 2, hitRadius: 4, anchor: [418, 350], labelPos: [376, 352]
+            },
+            {
+                num: 16, name: "Llac Malawi", category: "Llacs", type: "poly", color: "#0284c7", fillOpacity: 0.75,
+                poly: [[450,381],[450,401],[452,413],[456,415],[456,395],[453,381]],
+                hitPoly: [[450,381],[450,401],[452,413],[456,415],[456,395],[453,381]],
+                hitTol: 5, hitRadius: 11, anchor: [453, 398], labelPos: [496, 398]
+            },
+            {
+                num: 17, name: "Riu Zambezi", category: "Rius", type: "river", color: "#1d4ed8",
+                line: [[380,396],[376,412],[384,429],[395,441],[403,436],[414,428],[428,424],[444,426],[456,439],[466,449]],
+                hitLine: [[380,396],[376,412],[384,429],[391,436]],
+                extraHitLines: [[[414,428],[428,424],[444,426],[456,439],[466,449]]],
+                hitTol: 9, hitRadius: 12, anchor: [428, 424], labelPos: [428, 410]
+            },
+            {
+                num: 18, name: "Cascades Victòria", category: "Rius", type: "point", color: "#00d2ff", fillOpacity: 0.75,
+                poly: [[395,431],[411,431],[411,445],[395,445]],
+                hitPoly: [[395,431],[411,431],[411,445],[395,445]],
+                hitTol: 3, hitRadius: 11, anchor: [403, 438], labelPos: [430, 453]
+            },
+            {
+                num: 19, name: "Desert de Kalahari", category: "Deserts", type: "poly", color: "#d97706", fillOpacity: 0.48,
+                poly: [[335,455],[388,455],[395,495],[380,526],[344,524],[332,488]],
+                hitPoly: [[336,456],[387,456],[394,495],[379,525],[345,523],[334,488]],
+                hitTol: 2, hitRadius: 16, anchor: [364, 490], labelPos: [364, 490]
+            },
+            {
+                num: 20, name: "Drakensberg", category: "Relleu i costes", type: "poly", color: "#7c3aed", fillOpacity: 0.55,
+                poly: [[362,554],[392,532],[412,504],[426,510],[414,540],[385,562],[364,565]],
+                hitPoly: [[362,554],[392,532],[412,504],[426,510],[414,540],[385,562],[364,565]],
+                hitTol: 3, hitRadius: 14, anchor: [407.9, 519.7], labelPos: [442, 542]
+            },
+            {
+                num: 21, name: "Riu Congo", category: "Rius", type: "river", color: "#0284c7",
+                line: [[297,351],[311,344],[324,326],[337,307],[351,294],[368,290],[386,296],[395,314],[401,336],[406,355],[412,367]],
+                extraLines: [[[324,326],[348,336],[365,352],[382,368]],[[351,294],[368,282],[392,282]]],
+                hitLine: [[297,351],[311,344],[324,326],[337,307],[351,294],[368,290],[386,296],[395,314],[401,336],[404,352]],
+                hitTol: 10, hitRadius: 13, anchor: [368, 290], labelPos: [362, 274]
+            },
+            {
+                num: 22, name: "Llac Txad", category: "Llacs", type: "poly", color: "#06b6d4", fillOpacity: 0.75,
+                poly: [[295,202],[303,202],[312,210],[307,216],[299,215],[295,208]],
+                hitPoly: [[294,200],[305,200],[314,210],[308,218],[297,217],[293,208]],
+                hitTol: 5, hitRadius: 13, anchor: [303, 210], labelPos: [303, 190]
+            },
+            {
+                num: 23, name: "Riu Níger", category: "Rius", type: "river", color: "#2563eb",
+                line: [[127,214],[136,208],[148,196],[164,188],[174,176],[188,174],[201,186],[212,201],[225,218],[234,235],[237,248],[235,262]],
+                extraLines: [[[234,235],[252,238],[266,232],[278,231]]],
+                hitLine: [[127,214],[136,208],[148,196],[164,188],[174,176],[188,174],[201,186],[212,201],[225,218],[234,235],[237,248],[235,258]],
+                hitTol: 10, hitRadius: 13, anchor: [182, 175], labelPos: [172, 162]
+            },
+            {
+                num: 24, name: "Desert del Sàhara", category: "Deserts", type: "poly", color: "#eab308", fillOpacity: 0.44,
+                poly: [[105,115],[180,95],[270,75],[335,88],[338,168],[280,175],[190,164],[105,162]],
+                hitPoly: [[108,116],[180,96],[270,76],[334,88],[336,166],[280,173],[190,162],[108,160]],
+                hitTol: 2, hitRadius: 20, anchor: [235, 130], labelPos: [235, 130]
+            },
+            {
+                num: 25, name: "Desert de Namib", category: "Deserts", type: "poly", color: "#f97316", fillOpacity: 0.55,
+                poly: [[292,430],[312,432],[328,485],[338,538],[322,542],[306,492],[294,452]],
+                hitPoly: [[292,430],[312,432],[326,485],[336,536],[322,540],[306,492],[294,452]],
+                hitTol: 3, hitRadius: 14, anchor: [314, 488], labelPos: [266, 492]
+            },
+            {
+                num: 26, name: "Desert de Núbia", category: "Deserts", type: "poly", color: "#ca8a04", fillOpacity: 0.50,
+                poly: [[438,144],[464,144],[478,178],[458,194],[440,172]],
+                hitPoly: [[440,145],[463,145],[476,178],[458,192],[442,172]],
+                hitTol: 3, hitRadius: 13, anchor: [456, 168], labelPos: [456, 168]
+            },
+            {
+                num: 27, name: "Desert de Líbia", category: "Deserts", type: "poly", color: "#f59e0b", fillOpacity: 0.48,
+                poly: [[342,88],[412,86],[418,142],[345,145]],
+                hitPoly: [[344,89],[410,87],[416,141],[346,144]],
+                hitTol: 2, hitRadius: 16, anchor: [380, 114], labelPos: [380, 110]
+            },
+            {
+                num: 28, name: "Mont Kilimanjaro", category: "Relleu i costes", type: "peak", color: "#e11d48", fillOpacity: 0.72,
+                poly: [[459,315],[473,315],[473,328],[459,328]],
+                hitPoly: [[459,315],[473,315],[473,328],[459,328]],
+                hitTol: 3, hitRadius: 11, anchor: [465.5, 321.2], labelPos: [518, 322]
+            },
+            {
+                num: 29, name: "Llac Turkana", category: "Llacs", type: "poly", color: "#06b6d4", fillOpacity: 0.78,
+                poly: [[459,271],[464,271],[467,289],[461,289]],
+                hitPoly: [[458,270],[465,270],[468,289],[460,289]],
+                hitTol: 4, hitRadius: 10, anchor: [463, 279], labelPos: [508, 274]
+            },
+            {
+                num: 30, name: "Llac Albert", category: "Llacs", type: "poly", color: "#0ea5e9", fillOpacity: 0.78,
+                poly: [[424,287],[432,287],[432,297],[424,297]],
+                hitPoly: [[423,286],[433,286],[433,298],[423,298]],
+                hitTol: 4, hitRadius: 10, anchor: [428, 292], labelPos: [392, 288]
+            }
+        ];
+
+        window.SoundEngine = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playPop: function() {
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    var osc = this.ctx.createOscillator();
+                    var gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(420, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.09);
+                } catch (e) {}
+            },
+            playSuccess: function() {
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    var self = this;
+                    var now = this.ctx.currentTime;
+                    [587.33, 880].forEach(function(freq, idx) {
+                        var osc = self.ctx.createOscillator();
+                        var gain = self.ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.22);
+                        osc.connect(gain);
+                        gain.connect(self.ctx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.24);
+                    });
+                } catch (e) {}
+            },
+            playError: function() {
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    var now = this.ctx.currentTime;
+                    var osc = this.ctx.createOscillator();
+                    var gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.22);
+                    gain.gain.setValueAtTime(0.09, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } catch (e) {}
+            },
+            playFanfare: function() {
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    var self = this;
+                    var now = this.ctx.currentTime;
+                    [523.25, 659.25, 783.99, 1046.50].forEach(function(f, i) {
+                        var osc = self.ctx.createOscillator();
+                        var gain = self.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + i * 0.11);
+                        gain.gain.setValueAtTime(0.12, now + i * 0.11);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+                        osc.connect(gain);
+                        gain.connect(self.ctx.destination);
+                        osc.start(now + i * 0.11);
+                        osc.stop(now + 1.45);
+                    });
+                } catch (e) {}
+            }
+        };
+
+        window.pointInPolygon = function(point, vs) {
+            var x = point[0], y = point[1];
+            var inside = false;
+            for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                var xi = vs[i][0], yi = vs[i][1];
+                var xj = vs[j][0], yj = vs[j][1];
+                var intersect = ((yi > y) !== (yj > y)) &&
+                    (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        };
+
+        window.distToSegment = function(p, v, w) {
+            var l2 = Math.pow(v[0] - w[0], 2) + Math.pow(v[1] - w[1], 2);
+            if (l2 === 0) return Math.hypot(p[0] - v[0], p[1] - v[1]);
+            var t = ((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(p[0] - (v[0] + t * (w[0] - v[0])), p[1] - (v[1] + t * (w[1] - v[1])));
+        };
+
+        window.distToPolyline = function(p, pts) {
+            var minD = Infinity;
+            for (var i = 0; i < pts.length - 1; i++) {
+                var d = window.distToSegment(p, pts[i], pts[i + 1]);
+                if (d < minD) minD = d;
+            }
+            return minD;
+        };
+
+        window.distToPolygonEdges = function(p, poly) {
+            var minD = Infinity;
+            for (var i = 0; i < poly.length; i++) {
+                var j = (i + 1) % poly.length;
+                var d = window.distToSegment(p, poly[i], poly[j]);
+                if (d < minD) minD = d;
+            }
+            return minD;
+        };
+
+        window.isPointMatchingFeature = function(pt, feature) {
+            var x = pt[0], y = pt[1];
+            var dAnchor = Math.hypot(x - feature.anchor[0], y - feature.anchor[1]);
+
+            if (feature.hitCircles) {
+                return feature.hitCircles.some(function(c) { return Math.hypot(x-c[0],y-c[1]) <= c[2]; });
+            }
+
+            if (feature.type === "river") {
+                var hline = feature.hitLine || feature.line;
+                var riverTol = feature.hitTol || 9;
+                if (window.distToPolyline(pt, hline) <= riverTol) return true;
+                if (feature.extraHitLines) {
+                    for (var k = 0; k < feature.extraHitLines.length; k++) {
+                        if (window.distToPolyline(pt, feature.extraHitLines[k]) <= riverTol) return true;
+                    }
+                }
+                if (feature.extraLines) {
+                    for (var m = 0; m < feature.extraLines.length; m++) {
+                        if (window.distToPolyline(pt, feature.extraLines[m]) <= 6) return true;
+                    }
+                }
+                return dAnchor <= (feature.hitRadius || 12);
+            }
+
+            var hpoly = feature.hitPoly || feature.poly;
+            if (hpoly) {
+                if (window.pointInPolygon(pt, hpoly)) return true;
+                if (window.distToPolygonEdges(pt, hpoly) <= (feature.hitTol || 3)) return true;
+            }
+
+            return (feature.type === "point" || feature.type === "peak") && dAnchor <= (feature.hitRadius || 8);
+        };
+
+        // Zones critiques: un accident extens o lineal no pot donar-se per correcte
+        // sobre el nucli d'un accident veí. No altera les zones acolorides.
+        // Aquesta comprovació és puntual; no declara exactitud geodèsica.
+        (function () {
+            var baseMatch = window.isPointMatchingFeature;
+            var byNum = {};
+            window.ACCIDENTS_AFRICA.forEach(function (f) { byNum[f.num] = f; });
+            var higherSpecificity = {
+                1: [2, 3, 11],       // Mar Mediterrani: no acceptar serralada, peninsula ni riu
+                2: [10],             // Serralada de l'Atles: no acceptar l'estret
+                4: [3, 5, 11, 12],  // Mar Roig: descartar terra i curs fluvial
+                5: [12],             // Peninsula de Somalia: descartar el massis
+                8: [23],             // Golf de Guinea: no confondre amb el riu Niger
+                11: [3, 12, 26, 29],// Nil: descartar peninsula, massis, desert i Turkana
+                13: [14, 15, 28, 29, 30],
+                17: [18],
+                21: [15],            // Riu Congo: no admetre el nucli de Tanganyika
+                24: [23],            // Sahara: no admetre el curs del Niger
+                26: [4, 12]          // Desert de Nubia: descartar mar i massis
+            };
+            window.isPointMatchingFeature = function(pt, feature) {
+                if (!baseMatch(pt, feature)) return false;
+                var exclusions = higherSpecificity[feature.num] || [];
+                for (var i = 0; i < exclusions.length; i++) {
+                    var id = exclusions[i];
+                    if (baseMatch(pt, byNum[id])) return false;
+                }
+                return true;
+            };
+        })();
+
+        window.pointsToSvgPoly = function(pts) {
+            return pts.map(function(p) { return p[0] + "," + p[1]; }).join(" ");
+        };
+
+        window.pointsToSvgPath = function(pts) {
+            return pts.map(function(p, i) { return (i === 0 ? "M" : "L") + p[0] + "," + p[1]; }).join(" ");
+        };
+    </script>
+
+    <!-- BLOC 2: APLICACIÓ REACT (INTERFÍCIE, PUZLE I DIPLOMA EXCLUSIU MODE DIFÍCIL) -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const CATEGORY_STYLES = window.CATEGORY_STYLES;
+        const ACCIDENTS_AFRICA = window.ACCIDENTS_AFRICA;
+        const SoundEngine = window.SoundEngine;
+        const isPointMatchingFeature = window.isPointMatchingFeature;
+        const pointsToSvgPoly = window.pointsToSvgPoly;
+        const pointsToSvgPath = window.pointsToSvgPath;
+
+        const App = () => {
+            const [difficulty, setDifficulty] = useState('facil');
+            const [solved, setSolved] = useState(() => new Set());
+            const [selectedNum, setSelectedNum] = useState(null);
+            const [searchQuery, setSearchQuery] = useState("");
+            const [seconds, setSeconds] = useState(0);
+            const [victory, setVictory] = useState(false);
+            const [completedInHardMode, setCompletedInHardMode] = useState(false);
+            const [showDiploma, setShowDiploma] = useState(false);
+            const [studentName, setStudentName] = useState("");
+            const [feedbackBanner, setFeedbackBanner] = useState(null);
+            const [wrongPulsePt, setWrongPulsePt] = useState(null);
+            const [ghostDrag, setGhostDrag] = useState(null);
+            const [pendingModeChange, setPendingModeChange] = useState(null);
+
+            const [mapSrc, setMapSrc] = useState("mapa-africa-examen.png");
+            const [mapImgError, setMapImgError] = useState(false);
+            const [logoSrc, setLogoSrc] = useState("logo_aula_next.png");
+            const [logoImgError, setLogoImgError] = useState(false);
+
+            const svgRef = useRef(null);
+            const viewportRef = useRef(null);
+            const zoomBehaviorRef = useRef(null);
+            const mapInputRef = useRef(null);
+            const logoInputRef = useRef(null);
+            const svgPointerDownPosRef = useRef(null);
+
+            const score = solved.size;
+
+            // Comprovació neta de la imatge del mapa original sense usar fetch()
+            useEffect(() => {
+                let active = true;
+                const img = new window.Image();
+                img.onload = () => { if (active) setMapImgError(false); };
+                img.onerror = () => { if (active) setMapImgError(true); };
+                img.src = mapSrc;
+                return () => { active = false; };
+            }, [mapSrc]);
+
+            // Cronòmetre
+            useEffect(() => {
+                if (victory) return;
+                const timer = setInterval(() => setSeconds(s => s + 1), 1000);
+                return () => clearInterval(timer);
+            }, [victory]);
+
+            // Comprovació de victòria 30/30
+            useEffect(() => {
+                if (score === 30 && !victory) {
+                    setVictory(true);
+                    setCompletedInHardMode(difficulty === 'dificil');
+                    SoundEngine.playFanfare();
+                }
+            }, [score, victory, difficulty]);
+
+            // Inicialització de D3 Zoom sobre el grup unificat (imatge + capes SVG)
+            useEffect(() => {
+                if (!svgRef.current || !viewportRef.current) return;
+                const svg = d3.select(svgRef.current);
+                const g = d3.select(viewportRef.current);
+
+                const zoom = d3.zoom()
+                    .scaleExtent([1, 8])
+                    .filter((event) => !event.ctrlKey && event.type !== 'dblclick')
+                    .on("zoom", (event) => {
+                        g.attr("transform", event.transform);
+                    });
+
+                svg.call(zoom);
+                zoomBehaviorRef.current = zoom;
+            }, []);
+
+            const handleZoom = (type) => {
+                if (!zoomBehaviorRef.current || !svgRef.current) return;
+                const svg = d3.select(svgRef.current);
+                if (type === 'in') svg.transition().duration(260).call(zoomBehaviorRef.current.scaleBy, 1.6);
+                else if (type === 'out') svg.transition().duration(260).call(zoomBehaviorRef.current.scaleBy, 0.62);
+                else svg.transition().duration(380).call(zoomBehaviorRef.current.transform, d3.zoomIdentity);
+            };
+
+            const formatTime = (secs) => {
+                const m = Math.floor(secs / 60).toString().padStart(2, '0');
+                const s = (secs % 60).toString().padStart(2, '0');
+                return `${m}:${s}`;
+            };
+
+            const clientToMapCoords = (clientX, clientY) => {
+                if (!viewportRef.current) return null;
+                const ctm = viewportRef.current.getScreenCTM();
+                if (!ctm) return null;
+                const inv = ctm.inverse();
+                const x = clientX * inv.a + clientY * inv.c + inv.e;
+                const y = clientX * inv.b + clientY * inv.d + inv.f;
+                return [x, y];
+            };
+
+            const evaluateAttempt = (pieceNum, mapPt) => {
+                if (!pieceNum || !mapPt) return;
+                const feature = ACCIDENTS_AFRICA.find(f => f.num === pieceNum);
+                if (!feature || solved.has(pieceNum)) return;
+
+                if (isPointMatchingFeature(mapPt, feature)) {
+                    SoundEngine.playSuccess();
+                    setSolved(prev => {
+                        const next = new Set(prev);
+                        next.add(pieceNum);
+                        return next;
+                    });
+                    setSelectedNum(null);
+                    setFeedbackBanner({
+                        type: 'ok',
+                        text: `Correcte! ${feature.num}. ${feature.name}`
+                    });
+                    setTimeout(() => setFeedbackBanner(null), 1800);
+                } else {
+                    SoundEngine.playError();
+                    setWrongPulsePt(mapPt);
+                    setFeedbackBanner({
+                        type: 'err',
+                        text: `Ubicació incorrecta per a «${feature.name}». Torna-ho a provar!`
+                    });
+                    setTimeout(() => setWrongPulsePt(null), 700);
+                    setTimeout(() => setFeedbackBanner(null), 1800);
+                }
+            };
+
+            // Gestió unificada de selecció i arrossegament (permet scroll vertical en mòbil/tauleta)
+            const handlePiecePointerDown = (e, feature) => {
+                if (solved.has(feature.num)) return;
+                if (e.button !== undefined && e.button !== 0) return;
+
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const isTouch = e.pointerType === 'touch';
+                let dragActive = false;
+                let canceledForScroll = false;
+
+                const onPointerMove = (moveEvt) => {
+                    if (canceledForScroll) return;
+                    const dx = moveEvt.clientX - startX;
+                    const dy = moveEvt.clientY - startY;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (!dragActive && dist > 7) {
+                        // En pantalles tàctils, si el gest és vertical sobre la llista, deixem fer scroll natural
+                        if (isTouch && Math.abs(dy) > Math.abs(dx) * 1.25) {
+                            canceledForScroll = true;
+                            window.removeEventListener('pointermove', onPointerMove);
+                            window.removeEventListener('pointerup', onPointerUp);
+                            return;
+                        }
+                        dragActive = true;
+                        SoundEngine.playPop();
+                        setSelectedNum(feature.num);
+                    }
+
+                    if (dragActive) {
+                        setGhostDrag({
+                            num: feature.num,
+                            name: feature.name,
+                            color: feature.color,
+                            x: moveEvt.clientX,
+                            y: moveEvt.clientY
+                        });
+                    }
+                };
+
+                const onPointerUp = (upEvt) => {
+                    window.removeEventListener('pointermove', onPointerMove);
+                    window.removeEventListener('pointerup', onPointerUp);
+
+                    if (canceledForScroll) return;
+
+                    if (dragActive) {
+                        setGhostDrag(null);
+                        if (svgRef.current) {
+                            const rect = svgRef.current.getBoundingClientRect();
+                            if (
+                                upEvt.clientX >= rect.left &&
+                                upEvt.clientX <= rect.right &&
+                                upEvt.clientY >= rect.top &&
+                                upEvt.clientY <= rect.bottom
+                            ) {
+                                const pt = clientToMapCoords(upEvt.clientX, upEvt.clientY);
+                                if (pt) evaluateAttempt(feature.num, pt);
+                            }
+                        }
+                    } else {
+                        SoundEngine.playPop();
+                        setSelectedNum(prev => (prev === feature.num ? null : feature.num));
+                    }
+                };
+
+                window.addEventListener('pointermove', onPointerMove);
+                window.addEventListener('pointerup', onPointerUp);
+            };
+
+            // Filtre < 5px entre clic de col·locació i moviment (pan) del mapa
+            const handleSvgPointerDown = (e) => {
+                svgPointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+            };
+
+            const handleSvgPointerUp = (e) => {
+                if (!svgPointerDownPosRef.current || !selectedNum) return;
+                const dx = e.clientX - svgPointerDownPosRef.current.x;
+                const dy = e.clientY - svgPointerDownPosRef.current.y;
+                svgPointerDownPosRef.current = null;
+                if (Math.hypot(dx, dy) < 5) {
+                    const pt = clientToMapCoords(e.clientX, e.clientY);
+                    if (pt) evaluateAttempt(selectedNum, pt);
+                }
+            };
+
+            const resetGameWithMode = (targetMode) => {
+                setDifficulty(targetMode);
+                setSolved(new Set());
+                setSelectedNum(null);
+                setSeconds(0);
+                setVictory(false);
+                setCompletedInHardMode(false);
+                setShowDiploma(false);
+                setPendingModeChange(null);
+                handleZoom('reset');
+            };
+
+            const requestModeSwitch = (newMode) => {
+                if (newMode === difficulty) return;
+                if (solved.size > 0 && !victory) {
+                    setPendingModeChange(newMode);
+                } else {
+                    resetGameWithMode(newMode);
+                }
+            };
+
+            const handleLocalMapUpload = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                setMapSrc(url);
+                setMapImgError(false);
+            };
+
+            const handleLocalLogoUpload = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                const url = URL.createObjectURL(file);
+                setLogoSrc(url);
+                setLogoImgError(false);
+            };
+
+            const activeFeature = useMemo(
+                () => ACCIDENTS_AFRICA.find(f => f.num === selectedNum) || null,
+                [selectedNum]
+            );
+
+            const filteredPieces = useMemo(() => {
+                const q = searchQuery.trim().toLowerCase();
+                if (!q) return ACCIDENTS_AFRICA;
+                return ACCIDENTS_AFRICA.filter(f =>
+                    f.name.toLowerCase().includes(q) || String(f.num).includes(q)
+                );
+            }, [searchQuery]);
+
+            const canEarnDiploma = victory && completedInHardMode && difficulty === 'dificil' && score === 30;
+
+            return (
+                <div className="flex flex-col md:flex-row h-screen w-full bg-slate-100 overflow-hidden relative">
+                    {/* Inputs ocults per carregar els fitxers originals si s'obri en l'entorn de vista prèvia */}
+                    <input
+                        ref={mapInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLocalMapUpload}
+                        className="hidden"
+                    />
+                    <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLocalLogoUpload}
+                        className="hidden"
+                    />
+
+                    {/* Peça flotant durant l'arrossegament */}
+                    {ghostDrag && (
+                        <div
+                            className="fixed z-[120] pointer-events-none px-3.5 py-2 rounded-xl shadow-2xl border-2 border-white text-white font-black text-xs uppercase tracking-tight flex items-center gap-2 transform -translate-x-1/2 -translate-y-1/2"
+                            style={{
+                                left: ghostDrag.x,
+                                top: ghostDrag.y,
+                                backgroundColor: ghostDrag.color || '#044D9B'
+                            }}
+                        >
+                            <span className="bg-white/25 px-1.5 py-0.5 rounded text-[11px]">{ghostDrag.num}</span>
+                            <span>{ghostDrag.name}</span>
+                        </div>
+                    )}
+
+                    {/* Modal de confirmació en canviar entre Mode Fàcil i Mode Difícil amb progrés iniciat */}
+                    {pendingModeChange && (
+                        <div className="fixed inset-0 z-[110] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+                            <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-4 border-[#EE8E29]">
+                                <div className="text-4xl mb-2">⚠️</div>
+                                <h3 className="text-lg font-black text-[#172744] uppercase mb-2">
+                                    Canviar al mode {pendingModeChange === 'dificil' ? 'Difícil' : 'Fàcil'}?
+                                </h3>
+                                <p className="text-xs text-slate-600 mb-5 leading-relaxed font-medium">
+                                    Canviar de nivell reiniciarà la partida actual a <strong>0 / 30</strong>. Recorda que el diploma només s'obté completant els 30 accidents íntegrament en <strong>Mode Difícil</strong>.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setPendingModeChange(null)}
+                                        className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 font-black text-xs uppercase py-3 rounded-xl transition-all"
+                                    >
+                                        Cancel·lar
+                                    </button>
+                                    <button
+                                        onClick={() => resetGameWithMode(pendingModeChange)}
+                                        className="flex-1 bg-[#044D9B] hover:bg-sky-800 text-white font-black text-xs uppercase py-3 rounded-xl shadow-lg transition-all"
+                                    >
+                                        Reiniciar i canviar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Columna principal: Capçalera + Visor del Mapa */}
+                    <div className="flex-grow flex flex-col relative h-[62vh] md:h-full">
+                        <div
+                            className="absolute top-0 left-0 h-1.5 bg-[#13AA78] z-50 transition-all duration-500 shadow-[0_0_10px_rgba(19,170,120,0.6)] no-print"
+                            style={{ width: `${(score / 30) * 100}%` }}
+                        ></div>
+
+                        {/* Capçalera Corporativa Aula Next ESO */}
+                        <header className="px-4 py-2.5 bg-[#172744] text-white border-b border-slate-700 flex flex-wrap justify-between items-center gap-3 z-20 shadow-md no-print">
+                            <div className="flex items-center gap-3">
+                                {!logoImgError ? (
+                                    <div className="bg-white px-2.5 py-1 rounded-xl shadow-sm flex items-center">
+                                        <img
+                                            src={logoSrc}
+                                            alt="Aula Next ESO"
+                                            className="h-8 md:h-9 w-auto object-contain"
+                                            onError={() => setLogoImgError(true)}
+                                        />
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => logoInputRef.current && logoInputRef.current.click()}
+                                        title="Clica per seleccionar logo_aula_next.png"
+                                        className="bg-white hover:bg-slate-100 text-[#172744] px-3 py-1.5 rounded-xl shadow-sm text-[10px] font-black uppercase border border-amber-400"
+                                    >
+                                        Carregar logo_aula_next.png
+                                    </button>
+                                )}
+
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="text-lg md:text-xl font-black tracking-tight uppercase leading-none text-white">
+                                            ÀFRICA · <span className="text-[#EE8E29]">PUZLE FÍSIC</span>
+                                        </h1>
+                                        <span className="hidden sm:inline-block bg-[#044D9B] text-sky-100 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                                            30 accidents geogràfics · 1r ESO
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <button
+                                            onClick={() => requestModeSwitch('facil')}
+                                            className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all ${
+                                                difficulty === 'facil'
+                                                    ? 'bg-[#13AA78] text-white shadow-md ring-2 ring-emerald-300'
+                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                            }`}
+                                        >
+                                            Fàcil (Guia visual)
+                                        </button>
+                                        <button
+                                            onClick={() => requestModeSwitch('dificil')}
+                                            className={`px-3 py-0.5 rounded-full text-[10px] font-black uppercase transition-all ${
+                                                difficulty === 'dificil'
+                                                    ? 'bg-[#EE8E29] text-white shadow-md ring-2 ring-amber-300'
+                                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                            }`}
+                                        >
+                                            Difícil (Opció a Diploma)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                                <div className="hidden sm:flex items-center gap-1.5 bg-slate-800/90 border border-slate-600 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-slate-200">
+                                    <span>⏱</span>
+                                    <span>{formatTime(seconds)}</span>
+                                </div>
+
+                                <button
+                                    onClick={() => resetGameWithMode(difficulty)}
+                                    title="Reiniciar partida"
+                                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-xl border border-slate-600 text-xs font-bold flex items-center gap-1.5 transition-all"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    <span className="hidden md:inline">Reiniciar</span>
+                                </button>
+
+                                <div className="bg-[#044D9B] text-white px-4 py-1.5 rounded-xl shadow-lg border-b-2 border-sky-950 min-w-[92px] text-center">
+                                    <span className="text-2xl font-mono font-black leading-none">
+                                        {score} <small className="text-[11px] opacity-75">/ 30</small>
+                                    </span>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* Visor del Mapa Original */}
+                        <main className="flex-grow relative flex items-center justify-center bg-[#cbe7f9] overflow-hidden">
+                            {/* Banner superior d'estat */}
+                            <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none z-30 no-print">
+                                <div className="bg-white/95 backdrop-blur px-3.5 py-2 rounded-xl shadow-md border border-slate-200 text-xs font-bold text-slate-700 pointer-events-auto flex items-center gap-2">
+                                    {activeFeature ? (
+                                        <>
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-[#044D9B] text-white font-black text-xs">
+                                                {activeFeature.num}
+                                            </span>
+                                            <span>
+                                                Col·loca al mapa: <strong className="text-[#172744] uppercase">{activeFeature.name}</strong>
+                                                {difficulty === 'facil' && (
+                                                    <span className="ml-2 text-emerald-700 font-extrabold">
+                                                        (Zona il·luminada al mapa)
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span>
+                                            Selecciona o arrossega un dels <strong>30 accidents geogràfics</strong> del panell dret fins al mapa mut.
+                                        </span>
+                                    )}
+                                </div>
+
+                                {feedbackBanner && (
+                                    <div
+                                        className={`px-4 py-2 rounded-xl shadow-lg font-black text-xs uppercase tracking-wide transition-all ${
+                                            feedbackBanner.type === 'ok'
+                                                ? 'bg-[#13AA78] text-white'
+                                                : 'bg-red-600 text-white'
+                                        }`}
+                                    >
+                                        {feedbackBanner.text}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Avís quan falta mapa-africa-examen.png (sense substituir-lo per cap altre mapa) */}
+                            {mapImgError && (
+                                <div className="absolute inset-0 z-40 bg-slate-900/85 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+                                    <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-4 border-[#EE8E29]">
+                                        <div className="text-4xl mb-2">🗺️</div>
+                                        <h3 className="text-lg font-black text-[#172744] uppercase mb-2">
+                                            Falta l'arxiu original «mapa-africa-examen.png»
+                                        </h3>
+                                        <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+                                            En GitHub Pages, aquest fitxer es carrega automàticament en estar a la mateixa carpeta que <code>index.html</code>. Per provar ara mateix la <strong>Vista prèvia interactiva de Gemini</strong> amb el mapa original de l'examen, selecciona el fitxer <code>mapa-africa-examen.png</code>:
+                                        </p>
+                                        <div className="flex flex-col gap-2.5">
+                                            <button
+                                                onClick={() => mapInputRef.current && mapInputRef.current.click()}
+                                                className="w-full bg-[#044D9B] hover:bg-sky-800 text-white font-black text-xs uppercase px-5 py-3.5 rounded-xl shadow-lg transition-all"
+                                            >
+                                                Seleccionar mapa-africa-examen.png
+                                            </button>
+                                            {logoImgError && (
+                                                <button
+                                                    onClick={() => logoInputRef.current && logoInputRef.current.click()}
+                                                    className="w-full bg-slate-100 hover:bg-slate-200 text-[#172744] font-bold text-xs uppercase px-4 py-2.5 rounded-xl border border-slate-300 transition-all"
+                                                >
+                                                    Seleccionar logo_aula_next.png (opcional)
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Controls de Zoom */}
+                            <div className="absolute bottom-5 left-5 flex flex-col gap-2 z-30 no-print">
+                                <button
+                                    onClick={() => handleZoom('in')}
+                                    title="Ampliar mapa"
+                                    className="w-11 h-11 bg-white hover:bg-slate-50 text-slate-800 font-black text-2xl rounded-xl shadow-xl border-2 border-slate-200 flex items-center justify-center"
+                                >
+                                    +
+                                </button>
+                                <button
+                                    onClick={() => handleZoom('out')}
+                                    title="Reduir mapa"
+                                    className="w-11 h-11 bg-white hover:bg-slate-50 text-slate-800 font-black text-2xl rounded-xl shadow-xl border-2 border-slate-200 flex items-center justify-center"
+                                >
+                                    -
+                                </button>
+                                <button
+                                    onClick={() => handleZoom('reset')}
+                                    title="Restablir vista"
+                                    className="w-11 h-11 bg-[#044D9B] hover:bg-sky-800 text-white font-black text-[10px] rounded-xl shadow-xl flex items-center justify-center uppercase tracking-tighter"
+                                >
+                                    Fix
+                                </button>
+                            </div>
+
+                            {/* Lienç SVG 645x593 alineat 1:1 amb mapa-africa-examen.png */}
+                            <svg
+                                ref={svgRef}
+                                viewBox="0 0 645 593"
+                                preserveAspectRatio="xMidYMid meet"
+                                onPointerDown={handleSvgPointerDown}
+                                onPointerUp={handleSvgPointerUp}
+                                className={`w-full h-full select-none no-print ${selectedNum ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
+                            >
+                                <g ref={viewportRef} id="map-viewport">
+                                    {/* 1. ÚNICA BASE CARTOGRÀFICA: IMATGE ORIGINAL DEL MAPA DE L'EXAMEN */}
+                                    {!mapImgError && (
+                                        <image
+                                            href={mapSrc}
+                                            x="0"
+                                            y="0"
+                                            width="645"
+                                            height="593"
+                                            preserveAspectRatio="xMidYMid meet"
+                                        />
+                                    )}
+
+                                    {/* 2. CAPA D'ACOLORIMENT GEOGRÀFIC PERMANENT DELS ACCIDENTS ENCERTATS */}
+                                    <g id="solved-geometries-layer">
+                                        {ACCIDENTS_AFRICA.map((f) => {
+                                            if (!solved.has(f.num)) return null;
+
+                                            if (f.type === "river") {
+                                                return (
+                                                    <g key={`solved-geo-${f.num}`} className="solved-snap pointer-events-none">
+                                                        <path
+                                                            d={pointsToSvgPath(f.line)}
+                                                            fill="none"
+                                                            stroke="#ffffff"
+                                                            strokeWidth="5.5"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            opacity="0.75"
+                                                        />
+                                                        <path
+                                                            d={pointsToSvgPath(f.line)}
+                                                            fill="none"
+                                                            stroke={f.color}
+                                                            strokeWidth="3.4"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        />
+                                                        {f.extraLines && f.extraLines.map((ex, idx) => (
+                                                            <g key={idx}>
+                                                                <path
+                                                                    d={pointsToSvgPath(ex)}
+                                                                    fill="none"
+                                                                    stroke="#ffffff"
+                                                                    strokeWidth="4.2"
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    opacity="0.75"
+                                                                />
+                                                                <path
+                                                                    d={pointsToSvgPath(ex)}
+                                                                    fill="none"
+                                                                    stroke={f.color}
+                                                                    strokeWidth="2.6"
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                />
+                                                            </g>
+                                                        ))}
+                                                    </g>
+                                                );
+                                            }
+
+                                            if (f.visualIslands) {
+                                                return (
+                                                    <g key={`solved-geo-${f.num}`} className="solved-snap pointer-events-none">
+                                                        {f.visualIslands.map(([cx,cy,r],idx) => (
+                                                            <circle key={idx} cx={cx} cy={cy} r={r} fill={f.color} fillOpacity="0.72" stroke="#ffffff" strokeWidth="0.8" />
+                                                        ))}
+                                                    </g>
+                                                );
+                                            }
+
+                                            return (
+                                                <g key={`solved-geo-${f.num}`} className="solved-snap pointer-events-none">
+                                                    <polygon
+                                                        points={pointsToSvgPoly(f.poly)}
+                                                        fill={f.color}
+                                                        fillOpacity={f.fillOpacity || 0.52}
+                                                        stroke="#ffffff"
+                                                        strokeWidth="1.4"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                    <polygon
+                                                        points={pointsToSvgPoly(f.poly)}
+                                                        fill="none"
+                                                        stroke={f.color}
+                                                        strokeWidth="1.8"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                    {f.type === "peak" && (
+                                                        <polygon
+                                                            points={`${f.anchor[0]},${f.anchor[1]-7} ${f.anchor[0]-6.5},${f.anchor[1]+5} ${f.anchor[0]+6.5},${f.anchor[1]+5}`}
+                                                            fill="#e11d48"
+                                                            stroke="#ffffff"
+                                                            strokeWidth="1.2"
+                                                        />
+                                                    )}
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
+
+                                    {/* 3. CAPA DE GUIA VISUAL EN MODE FÀCIL */}
+                                    {difficulty === 'facil' && activeFeature && !solved.has(activeFeature.num) && (
+                                        <g id="easy-mode-guide-layer" className="pointer-events-none">
+                                            {activeFeature.type === "river" ? (
+                                                <g className="guide-glow-river">
+                                                    <path
+                                                        d={pointsToSvgPath(activeFeature.line)}
+                                                        fill="none"
+                                                        stroke="#fde047"
+                                                        strokeWidth="9"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        opacity="0.75"
+                                                    />
+                                                    <path
+                                                        d={pointsToSvgPath(activeFeature.line)}
+                                                        fill="none"
+                                                        stroke="#16a34a"
+                                                        strokeWidth="4.2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="river-flow-dash"
+                                                    />
+                                                    {activeFeature.extraLines && activeFeature.extraLines.map((ex, idx) => (
+                                                        <g key={idx}>
+                                                            <path
+                                                                d={pointsToSvgPath(ex)}
+                                                                fill="none"
+                                                                stroke="#fde047"
+                                                                strokeWidth="7"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                opacity="0.75"
+                                                            />
+                                                            <path
+                                                                d={pointsToSvgPath(ex)}
+                                                                fill="none"
+                                                                stroke="#16a34a"
+                                                                strokeWidth="3.2"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                className="river-flow-dash"
+                                                            />
+                                                        </g>
+                                                    ))}
+                                                    <circle
+                                                        cx={activeFeature.anchor[0]}
+                                                        cy={activeFeature.anchor[1]}
+                                                        r="9"
+                                                        fill="#fde047"
+                                                        fillOpacity="0.45"
+                                                        stroke="#15803d"
+                                                        strokeWidth="2"
+                                                    />
+                                                </g>
+                                            ) : activeFeature.visualIslands ? (
+                                                <g className="guide-glow-poly">
+                                                    {activeFeature.visualIslands.map(([cx,cy,r],idx) => (
+                                                        <circle key={idx} cx={cx} cy={cy} r={r+2} fill="#bef264" fillOpacity="0.75" stroke="#15803d" strokeWidth="1.2" />
+                                                    ))}
+                                                </g>
+                                            ) : (
+                                                <g className="guide-glow-poly">
+                                                    <polygon
+                                                        points={pointsToSvgPoly(activeFeature.poly)}
+                                                        fill="#bef264"
+                                                        fillOpacity="0.68"
+                                                        stroke="#15803d"
+                                                        strokeWidth="2.5"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                    <circle
+                                                        cx={activeFeature.anchor[0]}
+                                                        cy={activeFeature.anchor[1]}
+                                                        r="10"
+                                                        fill="#fef08a"
+                                                        fillOpacity="0.6"
+                                                        stroke="#15803d"
+                                                        strokeWidth="2"
+                                                        strokeDasharray="3 2"
+                                                    />
+                                                </g>
+                                            )}
+                                        </g>
+                                    )}
+
+                                    {/* 4. CAPA D'ETIQUETES COL·LOCADES */}
+                                    <g id="solved-labels-layer" className="pointer-events-none">
+                                        {ACCIDENTS_AFRICA.map((f) => {
+                                            if (!solved.has(f.num)) return null;
+                                            const [ax, ay] = f.anchor;
+                                            const [lx, ly] = f.labelPos;
+                                            const labelText = `${f.num}. ${f.name}`;
+                                            const boxW = Math.max(46, labelText.length * 4.3 + 10);
+                                            const boxH = 13;
+
+                                            return (
+                                                <g key={`label-${f.num}`} className="solved-snap">
+                                                    <line
+                                                        x1={ax}
+                                                        y1={ay}
+                                                        x2={lx}
+                                                        y2={ly}
+                                                        stroke="#172744"
+                                                        strokeWidth="1.1"
+                                                        strokeDasharray="2,1.5"
+                                                    />
+                                                    <circle
+                                                        cx={ax}
+                                                        cy={ay}
+                                                        r="2.8"
+                                                        fill={f.color}
+                                                        stroke="#ffffff"
+                                                        strokeWidth="1"
+                                                    />
+                                                    <rect
+                                                        x={lx - boxW / 2}
+                                                        y={ly - boxH / 2}
+                                                        width={boxW}
+                                                        height={boxH}
+                                                        rx="3.5"
+                                                        fill="#ffffff"
+                                                        fillOpacity="0.94"
+                                                        stroke={f.color}
+                                                        strokeWidth="1.2"
+                                                    />
+                                                    <text
+                                                        x={lx}
+                                                        y={ly + 2.8}
+                                                        textAnchor="middle"
+                                                        fontSize="6.8"
+                                                        fontWeight="800"
+                                                        fill="#0f172a"
+                                                    >
+                                                        {labelText}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                    </g>
+
+                                    {/* 5. INDICADOR D'ERROR PUNTUAL */}
+                                    {wrongPulsePt && (
+                                        <g className="pointer-events-none">
+                                            <circle
+                                                cx={wrongPulsePt[0]}
+                                                cy={wrongPulsePt[1]}
+                                                r="14"
+                                                fill="rgba(220, 38, 38, 0.35)"
+                                                stroke="#dc2626"
+                                                strokeWidth="2.5"
+                                            />
+                                            <line
+                                                x1={wrongPulsePt[0] - 6}
+                                                y1={wrongPulsePt[1] - 6}
+                                                x2={wrongPulsePt[0] + 6}
+                                                y2={wrongPulsePt[1] + 6}
+                                                stroke="#dc2626"
+                                                strokeWidth="2.5"
+                                                strokeLinecap="round"
+                                            />
+                                            <line
+                                                x1={wrongPulsePt[0] + 6}
+                                                y1={wrongPulsePt[1] - 6}
+                                                x2={wrongPulsePt[0] - 6}
+                                                y2={wrongPulsePt[1] + 6}
+                                                stroke="#dc2626"
+                                                strokeWidth="2.5"
+                                                strokeLinecap="round"
+                                            />
+                                        </g>
+                                    )}
+                                </g>
+                            </svg>
+                        </main>
+
+                        {/* Modal de Finalització 30/30 i Diploma Exclusiu del Mode Difícil */}
+                        {victory && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-[#172744]/85 backdrop-blur-md z-[90] p-4">
+                                {!showDiploma ? (
+                                    <div className="bg-white p-8 md:p-10 rounded-[2rem] text-center border-8 border-[#13AA78] shadow-2xl certificate-appear max-w-lg w-full no-print">
+                                        <div className="text-6xl mb-3">{canEarnDiploma ? '🏆' : '🎖️'}</div>
+                                        <h2 className="text-4xl md:text-5xl font-black text-[#172744] mb-2 italic">
+                                            EXCEL·LENT!
+                                        </h2>
+                                        <p className="text-base md:text-lg text-slate-600 mb-2 font-bold">
+                                            Has completat els 30 accidents geogràfics del mapa físic d'Àfrica!
+                                        </p>
+                                        <p className="text-xs font-extrabold uppercase text-[#044D9B] mb-6">
+                                            Temps emprat: {formatTime(seconds)} · Nivell: {canEarnDiploma ? 'Mode Difícil · Sense pistes' : 'Mode Fàcil (Pràctica guiada)'}
+                                        </p>
+
+                                        {canEarnDiploma ? (
+                                            <>
+                                                <div className="mb-6 text-left">
+                                                    <label className="block text-[11px] font-black text-[#044D9B] uppercase mb-2">
+                                                        Escriu el teu nom i cognoms per generar el diploma:
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full p-3.5 border-2 border-slate-200 rounded-2xl text-center font-bold text-lg focus:outline-none focus:border-[#13AA78]"
+                                                        placeholder="EL TEU NOM I COGNOMS"
+                                                        value={studentName}
+                                                        onChange={(e) => setStudentName(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={() => setShowDiploma(true)}
+                                                        className="flex-1 bg-[#13AA78] hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl font-black text-base shadow-xl transition-all uppercase tracking-wider"
+                                                    >
+                                                        Generar Diploma
+                                                    </button>
+                                                    <button
+                                                        onClick={() => resetGameWithMode('dificil')}
+                                                        className="flex-1 bg-[#044D9B] hover:bg-sky-800 text-white px-6 py-3.5 rounded-2xl font-black text-base shadow-xl transition-all uppercase tracking-wider"
+                                                    >
+                                                        Repetir
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 mb-6 text-xs text-amber-900 font-semibold leading-relaxed">
+                                                    Has superat l'entrenament en <strong>Mode Fàcil</strong>. Per obtenir el <strong>Diploma de reconeixement</strong> d'Aula Next ESO, completa ara el repte de 30/30 en <strong>Mode Difícil (sense pistes)</strong>!
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row gap-3">
+                                                    <button
+                                                        onClick={() => resetGameWithMode('dificil')}
+                                                        className="flex-1 bg-[#EE8E29] hover:bg-amber-600 text-white px-5 py-3.5 rounded-2xl font-black text-sm shadow-xl transition-all uppercase tracking-wider"
+                                                    >
+                                                        Anar al Mode Difícil
+                                                    </button>
+                                                    <button
+                                                        onClick={() => resetGameWithMode('facil')}
+                                                        className="flex-1 bg-[#044D9B] hover:bg-sky-800 text-white px-5 py-3.5 rounded-2xl font-black text-sm shadow-xl transition-all uppercase tracking-wider"
+                                                    >
+                                                        Repetir Mode Fàcil
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div id="diploma-print-container" className="bg-white p-2 rounded-2xl shadow-2xl certificate-appear max-w-3xl w-full">
+                                        <div className="bg-white p-6 md:p-10 border-[12px] md:border-[16px] border-double border-[#172744] text-center relative overflow-hidden">
+                                            {/* Logotip oficial Aula Next ESO al diploma */}
+                                            <div className="flex justify-center mb-3">
+                                                {!logoImgError ? (
+                                                    <img
+                                                        src={logoSrc}
+                                                        alt="Aula Next ESO"
+                                                        className="h-12 md:h-14 w-auto object-contain"
+                                                        onError={() => setLogoImgError(true)}
+                                                    />
+                                                ) : (
+                                                    <div className="text-lg font-black text-[#172744]">AULA NEXT ESO</div>
+                                                )}
+                                            </div>
+
+                                            <h4 className="text-[#044D9B] text-xs md:text-sm font-black uppercase tracking-widest mb-1.5 italic">
+                                                Diploma de reconeixement
+                                            </h4>
+                                            <h1 className="text-2xl md:text-3xl font-black text-[#172744] mb-2 uppercase tracking-tight">
+                                                Àfrica · Puzle Físic (1r ESO)
+                                            </h1>
+                                            <p className="text-slate-500 font-bold mb-3 italic text-xs md:text-sm">
+                                                S'atorga aquest reconeixement a:
+                                            </p>
+
+                                            <div className="diploma-font text-4xl md:text-6xl text-[#044D9B] mb-4 border-b-2 border-sky-100 pb-2 px-8 inline-block">
+                                                {studentName.trim() || 'Alumne/a de 1r ESO'}
+                                            </div>
+
+                                            <p className="text-slate-600 font-medium max-w-lg mx-auto text-xs md:text-sm leading-relaxed mb-4">
+                                                Per haver localitzat i situat correctament els <strong>30 accidents geogràfics del mapa físic d'Àfrica</strong> en <strong>Mode Difícil · Sense pistes</strong>, en un temps total de <strong>{formatTime(seconds)}</strong>.
+                                            </p>
+
+                                            <div className="inline-flex items-center gap-2 bg-[#EE8E29] text-white font-black px-4 py-1 rounded-full text-xs uppercase tracking-wider shadow-sm mb-6">
+                                                <span>30/30 ENCERTS</span>
+                                                <span>·</span>
+                                                <span>MODE DIFÍCIL · SENSE PISTES</span>
+                                            </div>
+
+                                            {/* Peu institucional del diploma sense telèfon ni correu */}
+                                            <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center px-4 md:px-8">
+                                                <div className="text-left">
+                                                    <div className="text-sm font-black text-[#172744]">Equip Aula Next ESO</div>
+                                                    <div className="w-36 h-0.5 bg-[#044D9B] my-1"></div>
+                                                    <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                                                        Signatura institucional
+                                                    </div>
+                                                </div>
+
+                                                {/* Segell corporatiu */}
+                                                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-double border-[#13AA78] bg-emerald-50/70 flex flex-col items-center justify-center p-2 text-center shadow-inner transform -rotate-6">
+                                                    <span className="text-[8px] md:text-[9px] font-black text-[#172744] uppercase tracking-tight leading-tight">
+                                                        AULA NEXT ESO
+                                                    </span>
+                                                    <div className="w-12 h-px bg-[#13AA78] my-1"></div>
+                                                    <span className="text-[9px] md:text-[10px] font-black text-[#13AA78] uppercase tracking-tight leading-tight">
+                                                        REPTE SUPERAT
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2 p-2 bg-slate-100 no-print mt-1 rounded-b-xl">
+                                            <button
+                                                onClick={() => window.print()}
+                                                className="flex-1 bg-[#044D9B] hover:bg-sky-800 text-white py-3 rounded-xl font-black uppercase text-xs tracking-wider shadow"
+                                            >
+                                                Imprimir Diploma (A4)
+                                            </button>
+                                            <button
+                                                onClick={() => setShowDiploma(false)}
+                                                className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-3 rounded-xl font-black uppercase text-xs tracking-wider"
+                                            >
+                                                Tornar
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Panell Lateral de Peces (1-30) */}
+                    <aside className="w-full md:w-[390px] h-[38vh] md:h-full bg-white border-t md:border-t-0 md:border-l border-slate-200 shadow-2xl flex flex-col z-20 no-print">
+                        <div className="p-3.5 bg-slate-50 border-b border-slate-200">
+                            <div className="flex items-center justify-between">
+                                <h2 className="font-black text-[#172744] text-xs md:text-sm uppercase tracking-tight">
+                                    Accidents Geogràfics (1–30)
+                                </h2>
+                                <span className="text-[11px] font-extrabold text-[#044D9B]">
+                                    {30 - score} pendents
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                                {difficulty === 'facil'
+                                    ? 'Mode Fàcil: Toca o arrossega una peça per il·luminar la seua forma al mapa.'
+                                    : 'Mode Difícil: Simulacre d\'examen sense pistes (opció a Diploma).'}
+                            </p>
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Cerca pel número o nom (ex: Nil, Sàhara...)"
+                                className="mt-2 w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-[#044D9B]"
+                            />
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto p-3 space-y-2 bg-slate-50/40 custom-scrollbar">
+                            {filteredPieces.map((item) => {
+                                const isSolved = solved.has(item.num);
+                                const isSelected = selectedNum === item.num;
+                                const catStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES["Relleu i costes"];
+
+                                return (
+                                    <div
+                                        key={item.num}
+                                        onPointerDown={(e) => handlePiecePointerDown(e, item)}
+                                        style={{ touchAction: 'pan-y' }}
+                                        className={`flex items-center gap-3 p-2.5 rounded-2xl border-2 transition-all select-none ${
+                                            isSolved
+                                                ? 'bg-emerald-50/70 border-emerald-200 opacity-60 cursor-default'
+                                                : isSelected
+                                                ? 'bg-sky-50 border-[#044D9B] shadow-md ring-2 ring-sky-200 cursor-grab'
+                                                : 'bg-white border-slate-100 hover:border-[#044D9B] hover:shadow-md cursor-grab active:cursor-grabbing'
+                                        }`}
+                                    >
+                                        <div
+                                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
+                                                isSolved
+                                                    ? 'bg-[#13AA78] text-white'
+                                                    : isSelected
+                                                    ? 'bg-[#044D9B] text-white'
+                                                    : 'bg-slate-100 text-slate-700'
+                                            }`}
+                                        >
+                                            {item.num}
+                                        </div>
+
+                                        <div className="flex-grow min-w-0">
+                                            <div className="font-black text-xs md:text-sm text-slate-800 truncate">
+                                                {item.name}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span
+                                                    className="w-2 h-2 rounded-full"
+                                                    style={{ backgroundColor: item.color }}
+                                                ></span>
+                                                <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400">
+                                                    {catStyle.label}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {isSolved ? (
+                                            <div className="text-[#13AA78] font-black text-lg px-1">✓</div>
+                                        ) : (
+                                            <div className="text-[10px] font-extrabold text-slate-400 uppercase px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                                {isSelected ? 'Seleccionat' : 'Arrossega'}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Peu Corporatiu Aula Next ESO (conserva telèfon i correu a la interfície principal) */}
+                        <div className="p-3.5 bg-[#172744] text-white border-t border-slate-800">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-xs font-black uppercase tracking-tight text-white">
+                                        Aula Next <span className="text-[#EE8E29]">ESO</span>
+                                    </h3>
+                                    <p className="text-[9px] text-slate-300 font-semibold">
+                                        Geografia i Història · 1r ESO
+                                    </p>
+                                </div>
+                                <div className="text-right text-[10px] font-bold text-slate-200 space-y-0.5">
+                                    <div>📞 602 02 61 19</div>
+                                    <div>✉️ aulakids513@gmail.com</div>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
